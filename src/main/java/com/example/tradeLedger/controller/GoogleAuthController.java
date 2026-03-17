@@ -53,7 +53,8 @@ public class GoogleAuthController {
                         CLIENT_ID,
                         CLIENT_SECRET,
                         code,
-                        "http://localhost:8080/oauth2/callback"
+//                        "http://localhost:8080/oauth2/callback"
+                        "https://trade-ledger-n6ps.onrender.com/oauth2/callback"
                 ).execute();
 
         String accessToken = tokenResponse.getAccessToken();
