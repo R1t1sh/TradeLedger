@@ -67,7 +67,7 @@ public class GoogleAuthController {
         String email = getUserEmail(accessToken);
 
         // ✅ Save per user
-        GoogleToken tokenDetails = tokenService.saveOrUpdateToken(email, accessToken, refreshToken);
+        tokenService.saveOrUpdateToken(email, accessToken, refreshToken);
 
         // ✅ Redirect to dashboard after successful login
         response.sendRedirect("https://trade-pnl-analysis.vercel.app/trades");
