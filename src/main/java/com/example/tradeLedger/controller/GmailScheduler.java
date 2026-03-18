@@ -36,7 +36,7 @@ public class GmailScheduler {
     }
 
     // 🔥 Runs every 5 minutes
-    @Scheduled(fixedDelay = 300000)
+//    @Scheduled(fixedDelay = 300000)
     public void processEmails() {
 
         log.info("🚀 Scheduler started...");
