@@ -41,6 +41,8 @@ public class GmailService {
     // ✅ PUBLIC METHOD (used by controller)
     public void readEmailsWithAttachments(String userEmail, String senderEmail) throws Exception {
 
+        System.out.println("USER EMAIL : {" + userEmail + "}");
+
         GoogleToken token = tokenRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
