@@ -46,9 +46,8 @@ public class GoogleAuthController {
 
     // 2️⃣ Callback API
     @GetMapping("/oauth2/callback")
-    public ResponseEntity<ResponseDto> callback(@RequestParam("code") String code) throws Exception {
+    public void callback(@RequestParam("code") String code, HttpServletResponse response) throws Exception {
 
-        ResponseDto response = new ResponseDto();
         GoogleTokenResponse tokenResponse =
                 new GoogleAuthorizationCodeTokenRequest(
                         GoogleNetHttpTransport.newTrustedTransport(),
@@ -69,8 +68,8 @@ public class GoogleAuthController {
         // ✅ Save per user
         GoogleToken tokenDetails = tokenService.saveOrUpdateToken(email, accessToken, refreshToken);
 
-        response.setData(tokenDetails);
-        return new ResponseEntity(tokenDetails, HttpStatus.OK);
+        // ✅ Redirect to dashboard after successful login
+        response.sendRedirect("https://trade-pnl-analysis.vercel.app/trades");
     }
 
     private String getUserEmail(String accessToken) throws Exception {
