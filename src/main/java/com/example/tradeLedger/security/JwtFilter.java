@@ -21,12 +21,15 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+
+
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
 
             String token = header.substring(7);
-
+            System.out.println("JWT FILTER HIT");
+            System.out.println("HEADER: " + request.getHeader("Authorization"));
             try {
                 if ("access".equals(JwtUtil.extractType(token))) {
 

@@ -41,32 +41,42 @@ public class GmailService {
     // ✅ PUBLIC METHOD (used by controller)
     public void readEmailsWithAttachments(String userEmail, String senderEmail) throws Exception {
 
-        System.out.println("USER EMAIL : {" + userEmail + "}");
+        String normalizedEmail = userEmail.trim().toLowerCase();
 
-        GoogleToken token = tokenRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        System.out.println("USER EMAIL : {" + normalizedEmail + "}");
+
+        GoogleToken token = tokenRepository.findByEmail(normalizedEmail)
+                .orElse(null);
+
+        if (token == null) {
+            System.out.println("❌ User not found for: {" + normalizedEmail + "}");
+            return; // 🔥 DO NOT throw
+        }
 
         String accessToken = getValidAccessToken(token);
 
         try {
-            fetchEmailsWithAttachments(accessToken, senderEmail);
+            fetchEmailsWithAttachments(accessToken, senderEmail, token.getPanCard());
 
         } catch (Exception e) {
 
             System.out.println("Access token expired, refreshing...");
 
-            String newAccessToken = refreshAccessToken(CryptoUtil.decrypt(token.getRefreshToken()));
+            String newAccessToken = refreshAccessToken(
+                    CryptoUtil.decrypt(token.getRefreshToken())
+            );
+
+            System.out.println("NEW ACCESS TOKEN : " + newAccessToken);
 
             token.setAccessToken(CryptoUtil.encrypt(newAccessToken));
             tokenRepository.save(token);
 
-            // 🔁 Retry once
-            fetchEmailsWithAttachments(newAccessToken, senderEmail);
+            fetchEmailsWithAttachments(newAccessToken, senderEmail, token.getPanCard());
         }
     }
 
     // ✅ CORE LOGIC
-    private void fetchEmailsWithAttachments(String accessToken, String senderEmail) throws Exception {
+    private void fetchEmailsWithAttachments(String accessToken, String senderEmail, String panCard) throws Exception {
 
         Gmail service = getGmailService(accessToken);
 
@@ -115,9 +125,7 @@ public class GmailService {
 
                     System.out.println("Downloaded: " + fileName);
 
-                    // ✅ Process PDF
-                    String password = "bjupn5708c";
-                    String result = pdfProcessingService.processPdf(filePath, password);
+                    String result = pdfProcessingService.processPdf(filePath, CryptoUtil.decrypt(panCard));
 
                     System.out.println("Processed Data: " + result);
                 }

@@ -17,6 +17,8 @@ public class GoogleToken {
     @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
+    private String panCard;
+
     private boolean revoked = false;
 
     private long createdAt;
@@ -79,5 +81,13 @@ public class GoogleToken {
 
     public void setCreatedAt(long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getPanCard() {
+        return panCard;
+    }
+
+    public void setPanCard(String panCard) {
+        this.panCard = panCard;
     }
 }

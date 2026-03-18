@@ -25,8 +25,7 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
-
-                .cors(Customizer.withDefaults()) // 🔥 ADD THIS
+                .cors(Customizer.withDefaults())
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

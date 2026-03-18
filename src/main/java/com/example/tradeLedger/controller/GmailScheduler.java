@@ -81,7 +81,7 @@ public class GmailScheduler {
                 // 📩 Read emails
                 gmailService.readEmailsWithAttachments(
                         user.getEmail(),
-                        "atulkumarsethi8@gmail.com" // or supplier email filter
+                        "atulprogramming2001@gmail.com" // or supplier email filter
                 );
 
                 log.info("✅ Successfully processed user: {}", user.getEmail());

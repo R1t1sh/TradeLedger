@@ -29,8 +29,8 @@ public class GoogleAuthController {
     private final GoogleTokenService tokenService;
     private final GoogleTokenRepository tokenRepository;
 
-//    private final String REDIRECT_URL = "http://localhost:8080/oauth2/callback";
-    private final String REDIRECT_URL = "https://trade-ledger-n6ps.onrender.com/oauth2/callback";
+    private final String REDIRECT_URL = "http://localhost:8080/oauth2/callback";
+//    private final String REDIRECT_URL = "https://trade-ledger-n6ps.onrender.com/oauth2/callback";
 
 
     public GoogleAuthController(GoogleTokenService tokenService,
