@@ -13,7 +13,7 @@ public class GmailScheduler {
         this.gmailSchedulerService = gmailSchedulerService;
     }
 
-//    @Scheduled(fixedDelay = 300000)
+    @Scheduled(fixedDelay = 300000)
     public void processEmails() {
         gmailSchedulerService.processEmails();
     }

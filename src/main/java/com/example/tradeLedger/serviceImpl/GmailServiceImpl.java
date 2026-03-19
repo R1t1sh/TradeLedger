@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 @Service
@@ -58,7 +60,7 @@ public class GmailServiceImpl implements GmailService {
         String accessToken = getValidAccessToken(userDetails);
 
         try {
-            fetchEmailsWithAttachments(accessToken, senderEmail, userDetails.getPanCard());
+            fetchEmailsWithAttachments(accessToken, senderEmail, userDetails);
 
         } catch (Exception e) {
 
@@ -73,12 +75,12 @@ public class GmailServiceImpl implements GmailService {
             userDetails.setAccessToken(CryptoUtil.encrypt(newAccessToken));
             userDetailsRepository.save(userDetails);
 
-            fetchEmailsWithAttachments(newAccessToken, senderEmail, userDetails.getPanCard());
+            fetchEmailsWithAttachments(newAccessToken, senderEmail, userDetails);
         }
     }
 
     // ✅ CORE LOGIC
-    private void fetchEmailsWithAttachments(String accessToken, String senderEmail, String panCard) throws Exception {
+    private void fetchEmailsWithAttachments(String accessToken, String senderEmail, UserDetails userDetails) throws Exception {
 
         Gmail service = getGmailService(accessToken);
 
@@ -127,9 +129,19 @@ public class GmailServiceImpl implements GmailService {
 
                     System.out.println("Downloaded: " + fileName);
 
-                    String result = pdfProcessingService.processPdf(filePath, CryptoUtil.decrypt(panCard));
+                    try {
+                        String result = pdfProcessingService.processPdf(
+                                filePath,
+                                CryptoUtil.decrypt(userDetails.getPanCard()),
+                                userDetails,
+                                msg.getId(),
+                                sha256Hex(fileBytes)
+                        );
 
-                    System.out.println("Processed Data: " + result);
+                        System.out.println("Processed Data: " + result);
+                    } catch (Exception processingException) {
+                        System.out.println("Failed to process attachment " + fileName + ": " + processingException.getMessage());
+                    }
                 }
             }
         }
@@ -170,5 +182,19 @@ public class GmailServiceImpl implements GmailService {
                 GsonFactory.getDefaultInstance(),
                 credential
         ).setApplicationName("TradeLedger").build();
+    }
+
+    private String sha256Hex(byte[] fileBytes) {
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = messageDigest.digest(fileBytes);
+            StringBuilder builder = new StringBuilder();
+            for (byte value : hash) {
+                builder.append(String.format("%02x", value));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is not available in this runtime.", ex);
+        }
     }
 }
