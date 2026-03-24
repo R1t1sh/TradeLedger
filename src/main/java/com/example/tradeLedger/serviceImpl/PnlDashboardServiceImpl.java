@@ -12,6 +12,7 @@ import com.example.tradeLedger.entity.UserDetails;
 import com.example.tradeLedger.repository.PnlDashboardRepository;
 import com.example.tradeLedger.service.PnlDashboardService;
 import com.example.tradeLedger.service.PnlLedgerService;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 
 @Service
+@Transactional(Transactional.TxType.SUPPORTS)
 public class PnlDashboardServiceImpl implements PnlDashboardService {
 
     private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -83,7 +85,7 @@ public class PnlDashboardServiceImpl implements PnlDashboardService {
     public List<PnlDailyCalculationDto> getMonthSheet(UserDetails user, LocalDate tradeDate) {
         LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
         PnlPlan plan = pnlDashboardRepository.findActivePlan(user, effectiveTradeDate);
-        pnlLedgerService.generateMonthlyStructure(effectiveTradeDate);
+        pnlLedgerService.ensureMonthlyStructure(user, effectiveTradeDate);
 
         List<PnlPlanMonth> months = pnlDashboardRepository.findPlanMonths(plan.getId());
         PnlPlanMonth currentMonth = pnlDashboardRepository.findPlanMonth(plan.getId(), effectiveTradeDate);

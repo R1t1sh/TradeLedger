@@ -2,6 +2,7 @@ package com.example.tradeLedger.serviceImpl;
 
 import com.example.tradeLedger.dto.ObligationDto;
 import com.example.tradeLedger.dto.PnlDailyCalculationDto;
+import com.example.tradeLedger.dto.PnlManualEntryRequestDto;
 import com.example.tradeLedger.dto.PnlMonthSummaryDto;
 import com.example.tradeLedger.dto.PnlMonthTargetUpdateDto;
 import com.example.tradeLedger.dto.PnlPlanDto;
@@ -207,20 +208,28 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public List<PnlPlanDto> getPlans(UserDetails user) {
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required.");
         }
 
         List<PnlPlan> plans = pnlPlanRepository.findByUser_IdOrderByStartDateDesc(user.getId());
+        List<PnlPlanMonth> allMonths = pnlPlanMonthRepository.findByPlan_User_IdOrderByPlan_IdAscMonthSequenceAsc(user.getId());
+        Map<Long, List<PnlPlanMonth>> monthsByPlanId = new LinkedHashMap<>();
+        for (PnlPlanMonth month : allMonths) {
+            monthsByPlanId.computeIfAbsent(month.getPlan().getId(), ignored -> new ArrayList<>()).add(month);
+        }
+
         List<PnlPlanDto> planDtos = new ArrayList<>();
         for (PnlPlan plan : plans) {
-            planDtos.add(toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId())));
+            planDtos.add(toPlanDto(plan, monthsByPlanId.getOrDefault(plan.getId(), List.of())));
         }
         return planDtos;
     }
 
     @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public PnlPlanDto getActivePlan(UserDetails user, LocalDate tradeDate) {
         PnlPlan plan = resolveActivePlan(user, defaultTradeDate(tradeDate));
         return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()));
@@ -249,6 +258,56 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    public PnlProcessResultDto upsertManualDailyPnl(UserDetails user, PnlManualEntryRequestDto request) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required.");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("Manual daily PnL request is required.");
+        }
+        if (request.getSelectedPlan() == null) {
+            throw new IllegalArgumentException("Selected plan is required.");
+        }
+        if (request.getPnlAmount() == null) {
+            throw new IllegalArgumentException("PnL amount is required.");
+        }
+
+        LocalDate effectiveTradeDate = defaultTradeDate(request.getTradeDate());
+        PnlPlan plan = pnlPlanRepository.findByIdAndUser_Id(request.getSelectedPlan(), user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Selected plan not found."));
+        if (effectiveTradeDate.isBefore(plan.getStartDate()) || effectiveTradeDate.isAfter(plan.getEndDate())) {
+            throw new IllegalArgumentException("Trade date is outside the selected plan period.");
+        }
+        ensurePlanMonths(plan);
+
+        PnlPlanMonth planMonth = findPlanMonth(plan.getId(), effectiveTradeDate);
+        ensureTradingDays(planMonth);
+
+        PnlTradingDay tradingDay = pnlTradingDayRepository.findByPlanMonth_IdAndTradeDate(planMonth.getId(), effectiveTradeDate)
+                .orElseThrow(() -> new IllegalStateException("No trading day row found for trade date " + effectiveTradeDate + "."));
+
+        PnlDailyFact dailyFact = pnlDailyFactRepository.findByTradingDay_Id(tradingDay.getId())
+                .orElseGet(PnlDailyFact::new);
+
+        dailyFact.setTradingDay(tradingDay);
+        dailyFact.setSource(null);
+        dailyFact.setPayInPayOut(null);
+        dailyFact.setBrokerage(null);
+        dailyFact.setTransactionCharges(request.getTransactionCharges() != null ? scale(request.getTransactionCharges()) : null);
+        dailyFact.setNetPnl(scale(request.getPnlAmount()));
+        dailyFact.setNoOfTrades(null);
+        dailyFact.setExtractedAt(LocalDateTime.now());
+        pnlDailyFactRepository.save(dailyFact);
+
+        tradingDay.setRemark(normalizeRemark(request.getRemarks()));
+        tradingDay.setUpdatedAt(LocalDateTime.now());
+        pnlTradingDayRepository.save(tradingDay);
+
+        return buildManualProcessResult(user, plan, effectiveTradeDate);
+    }
+
+    @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public PnlWorkbookViewDto getWorkbookView(UserDetails user, LocalDate tradeDate) {
         LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
         PnlPlan plan = resolveActivePlan(user, effectiveTradeDate);
@@ -270,6 +329,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public PnlMonthSummaryDto getCurrentMonthSummary(UserDetails user, LocalDate tradeDate) {
         LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
         PnlPlan plan = resolveActivePlan(user, effectiveTradeDate);
@@ -284,6 +344,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public List<PnlMonthSummaryDto> getYearSummary(UserDetails user, LocalDate tradeDate) {
         LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
         PnlPlan plan = resolveActivePlan(user, effectiveTradeDate);
@@ -292,6 +353,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    @Transactional(Transactional.TxType.SUPPORTS)
     public List<PnlDailyCalculationDto> getMonthSheet(UserDetails user, LocalDate tradeDate) {
         LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
         PnlPlan plan = resolveActivePlan(user, effectiveTradeDate);
@@ -316,6 +378,14 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
             ensurePlanMonths(plan);
             generateMonthlyStructureForPlan(plan, effectiveTradeDate);
         }
+    }
+
+    @Override
+    public void ensureMonthlyStructure(UserDetails user, LocalDate tradeDate) {
+        LocalDate effectiveTradeDate = defaultTradeDate(tradeDate);
+        PnlPlan plan = resolveActivePlan(user, effectiveTradeDate);
+        ensurePlanMonths(plan);
+        generateMonthlyStructureForPlan(plan, effectiveTradeDate);
     }
 
     @Override
@@ -674,6 +744,35 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         return result;
     }
 
+    private PnlProcessResultDto buildManualProcessResult(UserDetails user, PnlPlan plan, LocalDate tradeDate) {
+        PnlPlanMonth currentMonth = findPlanMonth(plan.getId(), tradeDate);
+        ensureTradingDays(currentMonth);
+        syncStoredDailyTargets(plan, currentMonth);
+
+        List<PnlPlanMonth> months = pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId());
+        Map<Long, List<PnlTradingDay>> monthTradingDays = groupTradingDaysByMonth(plan.getId(), months);
+
+        List<PnlMonthSummaryDto> yearSummary = buildYearSummary(plan, months, monthTradingDays);
+        List<PnlDailyCalculationDto> dailySheet = buildDailySheet(currentMonth, monthTradingDays.getOrDefault(currentMonth.getId(), List.of()), yearSummary);
+
+        PnlMonthSummaryDto currentMonthSummary = yearSummary.stream()
+                .filter(summary -> summary.getMonthSequence().equals(currentMonth.getMonthSequence()))
+                .findFirst()
+                .orElse(null);
+
+        PnlProcessResultDto result = new PnlProcessResultDto();
+        result.setPersisted(true);
+        result.setDuplicateImport(false);
+        result.setPlanName(plan.getPlanName());
+        result.setMonthLabel(currentMonth.getMonthLabel());
+        result.setTradeDate(tradeDate);
+        result.setImportSourceId(null);
+        result.setCurrentMonthSummary(currentMonthSummary);
+        result.setYearSummary(yearSummary);
+        result.setDailySheet(dailySheet);
+        return result;
+    }
+
     private PnlPlan resolveActivePlan(UserDetails user, LocalDate tradeDate) {
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required.");
@@ -991,6 +1090,13 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
             return "INR";
         }
         return currency.trim().toUpperCase(Locale.ENGLISH);
+    }
+
+    private String normalizeRemark(String remark) {
+        if (remark == null || remark.isBlank()) {
+            return null;
+        }
+        return remark.trim();
     }
 
     private LocalDate defaultTradeDate(LocalDate tradeDate) {

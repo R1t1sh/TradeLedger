@@ -2,6 +2,7 @@ package com.example.tradeLedger.service;
 
 import com.example.tradeLedger.dto.ObligationDto;
 import com.example.tradeLedger.dto.PnlDailyCalculationDto;
+import com.example.tradeLedger.dto.PnlManualEntryRequestDto;
 import com.example.tradeLedger.dto.PnlMonthSummaryDto;
 import com.example.tradeLedger.dto.PnlMonthTargetUpdateDto;
 import com.example.tradeLedger.dto.PnlPlanDto;
@@ -32,6 +33,8 @@ public interface PnlLedgerService {
 
     PnlPlanDto updateMonthTarget(UserDetails user, Long monthId, PnlMonthTargetUpdateDto request);
 
+    PnlProcessResultDto upsertManualDailyPnl(UserDetails user, PnlManualEntryRequestDto request);
+
     PnlWorkbookViewDto getWorkbookView(UserDetails user, LocalDate tradeDate);
 
     PnlMonthSummaryDto getCurrentMonthSummary(UserDetails user, LocalDate tradeDate);
@@ -41,6 +44,8 @@ public interface PnlLedgerService {
     List<PnlDailyCalculationDto> getMonthSheet(UserDetails user, LocalDate tradeDate);
 
     void generateMonthlyStructure(LocalDate tradeDate);
+
+    void ensureMonthlyStructure(UserDetails user, LocalDate tradeDate);
 
     void recalculateMonthlyTargets(LocalDate tradeDate);
 }

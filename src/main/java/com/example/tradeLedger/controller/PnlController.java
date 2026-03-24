@@ -1,6 +1,7 @@
 package com.example.tradeLedger.controller;
 
 import com.example.tradeLedger.constant.ApplicationConstants;
+import com.example.tradeLedger.dto.PnlManualEntryRequestDto;
 import com.example.tradeLedger.dto.PnlMonthTargetUpdateDto;
 import com.example.tradeLedger.dto.PnlPlanRequestDto;
 import com.example.tradeLedger.dto.ResponseDto;
@@ -52,6 +53,14 @@ public class PnlController {
             Authentication authentication
     ) {
         return execute(authentication, "Month target updated successfully", user -> pnlLedgerService.updateMonthTarget(user, monthId, request));
+    }
+
+    @PostMapping("/daily/manual-entry")
+    public ResponseEntity<ResponseDto> upsertManualDailyPnl(
+            @RequestBody PnlManualEntryRequestDto request,
+            Authentication authentication
+    ) {
+        return execute(authentication, "Daily PnL saved successfully", user -> pnlLedgerService.upsertManualDailyPnl(user, request));
     }
 
     private ResponseEntity<ResponseDto> execute(
