@@ -204,7 +204,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         recalculateMonthlyTargetsForPlan(plan, determineTargetAllocationDate(plan));
         provisionInitialTradingStructure(plan);
 
-        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()));
+        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()), pnlDailyFactRepository.sumNetPnlByPlanId(plan.getId()));
     }
 
     @Override
@@ -221,9 +221,15 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
             monthsByPlanId.computeIfAbsent(month.getPlan().getId(), ignored -> new ArrayList<>()).add(month);
         }
 
+        List<Object[]> aggregatedPnl = pnlDailyFactRepository.sumNetPnlByPlanForUser(user.getId());
+        Map<Long, BigDecimal> achievedByPlan = new HashMap<>();
+        for (Object[] row : aggregatedPnl) {
+            achievedByPlan.put((Long) row[0], (BigDecimal) row[1]);
+        }
+
         List<PnlPlanDto> planDtos = new ArrayList<>();
         for (PnlPlan plan : plans) {
-            planDtos.add(toPlanDto(plan, monthsByPlanId.getOrDefault(plan.getId(), List.of())));
+            planDtos.add(toPlanDto(plan, monthsByPlanId.getOrDefault(plan.getId(), List.of()), achievedByPlan.getOrDefault(plan.getId(), ZERO)));
         }
         return planDtos;
     }
@@ -232,7 +238,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     @Transactional(Transactional.TxType.SUPPORTS)
     public PnlPlanDto getActivePlan(UserDetails user, LocalDate tradeDate) {
         PnlPlan plan = resolveActivePlan(user, defaultTradeDate(tradeDate));
-        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()));
+        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()), pnlDailyFactRepository.sumNetPnlByPlanId(plan.getId()));
     }
 
     @Override
@@ -254,7 +260,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         PnlPlan plan = month.getPlan();
         recalculateMonthlyTargetsForPlan(plan, determineTargetAllocationDate(plan));
         syncStoredDailyTargets(plan, month);
-        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()));
+        return toPlanDto(plan, pnlPlanMonthRepository.findByPlan_IdOrderByMonthSequenceAsc(plan.getId()), pnlDailyFactRepository.sumNetPnlByPlanId(plan.getId()));
     }
 
     @Override
@@ -315,7 +321,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         List<PnlMonthSummaryDto> yearSummary = buildYearSummary(plan, months, groupTradingDaysByMonth(plan.getId(), months));
 
         PnlWorkbookViewDto workbookView = new PnlWorkbookViewDto();
-        workbookView.setPlan(toPlanDto(plan, months));
+        workbookView.setPlan(toPlanDto(plan, months, pnlDailyFactRepository.sumNetPnlByPlanId(plan.getId())));
         workbookView.setMonthLabel(currentMonth.getMonthLabel());
         workbookView.setTradeDate(effectiveTradeDate);
         workbookView.setCurrentMonthSummary(
@@ -1205,7 +1211,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         return value.divide(BigDecimal.valueOf(divisor), scale, RoundingMode.HALF_UP);
     }
 
-    private PnlPlanDto toPlanDto(PnlPlan plan, List<PnlPlanMonth> months) {
+    private PnlPlanDto toPlanDto(PnlPlan plan, List<PnlPlanMonth> months, BigDecimal totalAchievedAmount) {
         PnlPlanDto dto = new PnlPlanDto();
         dto.setId(plan.getId());
         dto.setPlanName(plan.getPlanName());
@@ -1214,6 +1220,7 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
         dto.setAnnualTarget(scale(plan.getAnnualTarget()));
         dto.setCurrency(plan.getCurrency());
         dto.setActive(plan.isActive());
+        dto.setTotalAchievedAmount(scale(totalAchievedAmount));
         dto.setMonths(toPlanMonthDtos(months));
         return dto;
     }

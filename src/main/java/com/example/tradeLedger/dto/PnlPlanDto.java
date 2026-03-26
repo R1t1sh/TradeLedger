@@ -13,6 +13,7 @@ public class PnlPlanDto {
     private BigDecimal annualTarget;
     private String currency;
     private boolean active;
+    private BigDecimal totalAchievedAmount;
     private List<PnlPlanMonthDto> months;
 
     public Long getId() {
@@ -77,5 +78,13 @@ public class PnlPlanDto {
 
     public void setMonths(List<PnlPlanMonthDto> months) {
         this.months = months;
+    }
+
+    public BigDecimal getTotalAchievedAmount() {
+        return totalAchievedAmount;
+    }
+
+    public void setTotalAchievedAmount(BigDecimal totalAchievedAmount) {
+        this.totalAchievedAmount = totalAchievedAmount;
     }
 }
