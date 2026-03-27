@@ -41,9 +41,10 @@ public class PnlController {
     @GetMapping("/plans/active")
     public ResponseEntity<ResponseDto> getActivePlan(
             Authentication authentication,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tradeDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tradeDate,
+            @RequestParam(required = false, defaultValue = "FNO") String planType
     ) {
-        return execute(authentication, "Active plan fetched successfully", user -> pnlLedgerService.getActivePlan(user, tradeDate));
+        return execute(authentication, "Active plan fetched successfully", user -> pnlLedgerService.getActivePlan(user, tradeDate, planType));
     }
 
     @PatchMapping("/plans/months/{monthId}/manual-target")

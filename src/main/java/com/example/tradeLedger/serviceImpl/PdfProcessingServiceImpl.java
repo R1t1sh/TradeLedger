@@ -91,6 +91,16 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
         result.put("annexure", annexureList);
         result.put("annexureCount", annexureList.size());
 
+        String lowerPath = filePath.toLowerCase();
+        String planType = "EQUITY";
+        if (lowerPath.contains("fno")) {
+            planType = "FNO";
+        } else if (lowerPath.contains("stock")) {
+            planType = "STOCK";
+        } else if (lowerPath.contains("crypto")) {
+            planType = "CRYPTO";
+        }
+
         System.out.println("ob ; " + obligationText);
         System.out.println("ob ; " + obligation);
         if (user != null) {
@@ -102,7 +112,8 @@ public class PdfProcessingServiceImpl implements PdfProcessingService {
                             obligation,
                             annexureList.size(),
                             gmailMessageId,
-                            attachmentChecksum
+                            attachmentChecksum,
+                            planType
                     )
             );
         }
