@@ -39,13 +39,13 @@ public class PnlPlan {
     @Column(nullable = false)
     private boolean active = true;
 
-    @Column(name = "plan_type", nullable = false, length = 50)
+    @Column(name = "plan_type", nullable = false, length = 50, columnDefinition = "varchar(50) default 'FNO'")
     private String planType = "FNO";
 
-    @Column(name = "starting_capital", nullable = false, precision = 18, scale = 2)
+    @Column(name = "starting_capital", nullable = false, precision = 18, scale = 2, columnDefinition = "numeric(18,2) default 0.00")
     private BigDecimal startingCapital = BigDecimal.ZERO;
 
-    @Column(name = "total_achieved_amount", nullable = false, precision = 18, scale = 2)
+    @Column(name = "total_achieved_amount", nullable = false, precision = 18, scale = 2, columnDefinition = "numeric(18,2) default 0.00")
     private BigDecimal totalAchievedAmount = BigDecimal.ZERO;
 
     @Column(name = "created_at", nullable = false)
