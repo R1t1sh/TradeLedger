@@ -306,6 +306,30 @@ public class PnlLedgerServiceImpl implements PnlLedgerService {
     }
 
     @Override
+    public java.util.Map<String, Boolean> togglePlanVisibility(UserDetails user, Long planId) {
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required.");
+        }
+        if (planId == null) {
+            throw new IllegalArgumentException("Plan id is required.");
+        }
+
+        PnlPlan plan = pnlPlanRepository.findByIdAndUser_Id(planId, user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Plan not found."));
+
+        boolean newActiveStatus = !plan.isActive();
+        if (newActiveStatus) {
+            deactivateOtherPlans(user.getId(), plan.getId(), plan.getPlanType());
+        }
+
+        plan.setActive(newActiveStatus);
+        plan.setUpdatedAt(java.time.LocalDateTime.now());
+        pnlPlanRepository.save(plan);
+
+        return java.util.Collections.singletonMap("status", newActiveStatus);
+    }
+
+    @Override
     @Transactional(Transactional.TxType.SUPPORTS)
     public PnlPlanDto getActivePlan(UserDetails user, LocalDate tradeDate, String planType) {
         PnlPlan plan = resolveActivePlan(user, defaultTradeDate(tradeDate), planType);

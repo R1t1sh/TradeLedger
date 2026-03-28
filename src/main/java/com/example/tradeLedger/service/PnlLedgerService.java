@@ -34,6 +34,8 @@ public interface PnlLedgerService {
     void deletePlan(UserDetails user, Long planId);
 
     PnlPlanDto editPlan(UserDetails user, Long planId, PnlPlanRequestDto request);
+    
+    java.util.Map<String, Boolean> togglePlanVisibility(UserDetails user, Long planId);
 
     PnlPlanDto getActivePlan(UserDetails user, LocalDate tradeDate, String planType);
 

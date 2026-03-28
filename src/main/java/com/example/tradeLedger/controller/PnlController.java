@@ -58,6 +58,14 @@ public class PnlController {
         return execute(authentication, "Plan updated successfully", user -> pnlLedgerService.editPlan(user, planId, request));
     }
 
+    @PatchMapping("/plans/visibility")
+    public ResponseEntity<ResponseDto> togglePlanVisibility(
+            @RequestParam Long id,
+            Authentication authentication
+    ) {
+        return execute(authentication, "Plan visibility toggled successfully", user -> pnlLedgerService.togglePlanVisibility(user, id));
+    }
+
     @GetMapping("/plans/active")
     public ResponseEntity<ResponseDto> getActivePlan(
             Authentication authentication,
